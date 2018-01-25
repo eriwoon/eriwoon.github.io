@@ -6,11 +6,14 @@
     </head>
     <body>
 		<div><button id="alt">Alert</button></div>
+		<div><button id="mltalt">Multi-Alert</button></div>
 		<div><button id="pmt">Prompt</button></div>
 		<div><button id="cnf">confirm</button></div>
         <script type="text/javascript">
 		var alt = document.getElementById("alt");
 		alt.onclick = function(){alert("Clicked alert")};
+		var mltalt = document.getElementById("mltalt");
+		mltalt.onclick = function(){alert("Clicked alert 1");alert("Clicked alert 2")};
 		
 		
 		var malt = document.getElementById("pmt");
