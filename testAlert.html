@@ -1,27 +1,33 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <title>Test</title>
-    </head>
-    <body>
-		<div><button id="alt">Alert</button></div>
-		<div><button id="mltalt">Multi-Alert</button></div>
-		<div><button id="pmt">Prompt</button></div>
-		<div><button id="cnf">confirm</button></div>
-        <script type="text/javascript">
-		var alt = document.getElementById("alt");
-		alt.onclick = function(){alert("Clicked alert")};
-		var mltalt = document.getElementById("mltalt");
-		mltalt.onclick = function(){alert("Clicked alert 1");alert("Clicked alert 2")};
-		
-		
-		var malt = document.getElementById("pmt");
-		pmt.onclick = function(){prompt("Clicked prompt","xz:这里输入文字")};
-		
-		
-		var malt = document.getElementById("cnf");
-		cnf.onclick = function(){confirm("Clicked comfirm")};
-		</script>
-    </body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <title>Hello, world!</title>
+  </head>
+  <body>
+    <div><button id="alt" class="btn btn-primary my-2">Alert</button></div>
+	<div><button id="mltalt" class="btn btn-primary my-2">Multi-Alert</button></div>
+	<div><button id="pmt" class="btn btn-primary my-2">Prompt</button></div>
+	<div><button id="cnf" class="btn btn-primary my-2">confirm</button></div>
+       <script type="text/javascript">
+	var alt = document.getElementById("alt");
+	alt.onclick = function(){alert("Clicked alert")};
+	var mltalt = document.getElementById("mltalt");
+	mltalt.onclick = function(){alert("Clicked alert 1");alert("Clicked alert 2")};
+	
+	
+	var malt = document.getElementById("pmt");
+	pmt.onclick = function(){prompt("Clicked prompt","xz:这里输入文字")};
+	
+	
+	var malt = document.getElementById("cnf");
+	cnf.onclick = function(){confirm("Clicked comfirm")};
+
+  </body>
 </html>
