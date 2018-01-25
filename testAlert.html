@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Test</title>
+    </head>
+    <body>
+		<div><button id="alt">Alert</button></div>
+		<div><button id="pmt">Prompt</button></div>
+		<div><button id="cnf">confirm</button></div>
+        <script type="text/javascript">
+		var alt = document.getElementById("alt");
+		alt.onclick = function(){alert("Clicked alert")};
+		
+		
+		var malt = document.getElementById("pmt");
+		pmt.onclick = function(){prompt("Clicked prompt","xz:这里输入文字")};
+		
+		
+		var malt = document.getElementById("cnf");
+		cnf.onclick = function(){confirm("Clicked comfirm")};
+		</script>
+    </body>
+</html>
