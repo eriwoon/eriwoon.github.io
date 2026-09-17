@@ -1,36 +1,1155 @@
-<!-- index.html -->
-
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>潇夜小镇</title>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta charset="UTF-8" />
-    <link
-      rel="stylesheet"
-      href="resources/vue.css"
-    />
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>行程计划</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23e74c3c'/%3E%3Cpath d='M6 22 L12 14 L17 19 L26 8' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-      .icpinfo {
-        position:absolute;
-        top:95%;
-        text-align:center;
-        width:100%;
-      }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Vue 3 重构：#app 是 body 直接子元素，原 CSS 假设 body 直接含 #header/#main
+           需要 #app 自身成为 flex column 容器，让 #header/#main 沿用原有 flex 布局 */
+        #app {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        #header {
+            padding: 12px 20px;
+            background: #2c3e50;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        #header h1 { margin: 0 0 4px 0; font-size: 16px; }
+        #header p { margin: 0; font-size: 11px; opacity: 0.85; }
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        #map-container {
+            position: absolute;
+            inset: 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        /* 信息面板：覆盖在地图右上方（默认展开），地图位置/缩放不变 */
+        #info-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 440px;
+            background: #fff;
+            overflow-y: auto;
+            box-shadow: -2px 0 12px rgba(0,0,0,0.15);
+            z-index: 800;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* 折叠态：向右滑出屏幕 */
+        #info-panel.collapsed {
+            transform: translateX(100%);
+        }
+        .panel-header {
+            padding: 14px 18px 14px 18px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .panel-header-main { flex: 1; min-width: 0; }
+        .panel-header h2 { margin: 0 0 4px 0; font-size: 16px; }
+        .panel-header .day-meta { font-size: 11px; opacity: 0.9; }
+
+        /* 圆形折叠按钮：脱离 #info-panel，固定在 #main-content 内 */
+        .panel-toggle {
+            position: absolute;
+            top: 50%;
+            right: 416px;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #2c3e50;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            transition: background 0.2s, right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            z-index: 801;
+        }
+        .panel-toggle:hover { background: #34495e; }
+        /* 三角形绝对定位 + 居中（border-left 有色 = 尖朝右） */
+        .panel-toggle::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 0;
+            height: 0;
+            margin-left: -6px;
+            margin-top: -8px;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 12px solid #fff;
+            border-right: 0 solid #fff;
+            transition: border 0.2s;
+        }
+        /* 折叠态：按钮移到屏幕右边缘内侧 + 三角形尖朝左 */
+        #info-panel.collapsed ~ #panel-toggle,
+        body:has(#info-panel.collapsed) #panel-toggle {
+            right: 8px;
+        }
+        #info-panel.collapsed ~ #panel-toggle::before,
+        body:has(#info-panel.collapsed) #panel-toggle::before {
+            border-left: 0 solid #fff;
+            border-right: 12px solid #fff;
+        }
+        /* 折叠态 header 收起 */
+        #info-panel.collapsed .panel-header-main,
+        #info-panel.collapsed .panel-content,
+        #info-panel.collapsed #md-view { display: none; }
+        .panel-content {
+            padding: 14px 18px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        /* Markdown 渲染样式 */
+        .panel-content h3 {
+            margin: 14px 0 6px 0;
+            padding: 6px 10px;
+            background: #ecf0f1;
+            border-left: 4px solid #3498db;
+            color: #2c3e50;
+            font-size: 14px;
+            border-radius: 0 4px 4px 0;
+        }
+        .panel-content h3:first-child { margin-top: 0; }
+        .panel-content h4 {
+            margin: 12px 0 6px 0;
+            font-size: 13px;
+            color: #34495e;
+        }
+        .panel-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        .panel-content th,
+        .panel-content td {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .panel-content th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+        }
+        .panel-content ul, .panel-content ol {
+            margin: 4px 0;
+            padding-left: 22px;
+        }
+        .panel-content li { margin: 3px 0; }
+        .panel-content p { margin: 6px 0; }
+        .panel-content blockquote {
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: #fafafa;
+            border-left: 3px solid #bdc3c7;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        .panel-content strong { color: #c0392b; }
+        #toolbar {
+            background: #fff;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ecf0f1;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        #toolbar button {
+            padding: 5px 10px;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #2c3e50;
+            transition: all 0.2s;
+        }
+        #toolbar button:hover {
+            background: #3498db;
+            color: #fff;
+            border-color: #3498db;
+        }
+        #toolbar button.active {
+            background: #e74c3c;
+            color: #fff;
+            border-color: #e74c3c;
+        }
+        .map-legend {
+            background: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        .map-legend b { font-size: 12px; }
+        /* 详情 POI popup 样式 */
+        .detail-popup {
+            background: #fff !important;
+            border: 1px solid #bdc3c7 !important;
+            border-radius: 6px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            padding: 6px 8px !important;
+            color: #2c3e50 !important;
+        }
+        .detail-popup::before { border-top-color: #bdc3c7 !important; }
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #95a5a6;
+        }
+        .empty-state code {
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        /* MD 原始视图样式 */
+        #md-view {
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        #md-view-content {
+            padding: 18px 28px;
+            font-size: 14px;
+            line-height: 1.7;
+            color: #2c3e50;
+            flex-shrink: 0;
+        }
+        /* MD 视图内 Markdown 渲染样式 */
+        #md-view-content h1,
+        #md-view-content h2,
+        #md-view-content h3 {
+            margin: 18px 0 10px 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 6px;
+        }
+        #md-view-content h1 { font-size: 22px; }
+        #md-view-content h2 { font-size: 18px; }
+        #md-view-content h3 { font-size: 16px; border-bottom: none; padding-bottom: 0; }
+        #md-view-content h4,
+        #md-view-content h5 { font-size: 14px; color: #34495e; margin: 14px 0 6px 0; }
+        #md-view-content p { margin: 8px 0; }
+        #md-view-content ul, #md-view-content ol {
+            margin: 8px 0;
+            padding-left: 26px;
+        }
+        #md-view-content li { margin: 4px 0; }
+        #md-view-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        #md-view-content th,
+        #md-view-content td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        #md-view-content th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #34495e;
+        }
+        #md-view-content blockquote {
+            margin: 10px 0;
+            padding: 10px 14px;
+            background: #fafafa;
+            border-left: 4px solid #3498db;
+            color: #555;
+        }
+        #md-view-content code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Consolas", monospace;
+            font-size: 12px;
+        }
+        #md-view-content strong { color: #c0392b; }
+        #md-view-content hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 16px 0;
+        }
+        #md-view-content .day-section {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin: 18px 0;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        #md-view-actions {
+            padding: 10px 14px;
+            background: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+            display: flex;
+            gap: 8px;
+            flex: 0 0 auto;
+        }
+        #md-view-actions button {
+            padding: 6px 14px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            background: #fff;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        #md-view-actions button:hover {
+            background: #3498db;
+            color: #fff;
+            border-color: #3498db;
+        }
+        /* 视图切换 */
+        .hidden { display: none !important; }
+        /* MD 模式 */
+        body.md-mode #map-container { display: none; }
+        body.md-mode #info-panel {
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            box-shadow: none;
+            position: absolute;
+            inset: 0;
+            transform: none;
+            display: flex;
+            flex-direction: column;
+        }
+        body.md-mode #md-view.hidden { display: block !important; }
+        body.md-mode .panel-content { display: none; }
+        body.md-mode .panel-toggle { display: none; }
+        /* 加载提示 */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        #loading-overlay.hidden { display: none !important; }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid #ecf0f1;
+            border-top-color: #3498db;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
-  </head>
-  <body>
-    <div id="app">加载中</div>
+</head>
+<body>
+    <!-- Vue 3 全局构建（CDN）— 模板里 {{}} / v-if / v-for 都靠它解析 -->
+    <script src="https://unpkg.com/vue@3.4.27/dist/vue.global.prod.js"></script>
+
+    <!-- marked.js MD 解析器 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Leaflet 地图 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Vue 3 应用 -->
+    <div id="app">
+        <!-- 加载提示（Vue 仅控制 hidden class，初始 hidden=false） -->
+        <div id="loading-overlay" :class="{ hidden: loaded || loadError }">
+            <template v-if="!loadError">
+                <div class="spinner"></div>
+                <span>正在加载 plan.md ...</span>
+            </template>
+            <template v-else>
+                <div style="text-align:center;color:#c0392b;max-width:520px;padding:24px;">
+                    <div style="font-size:16px;font-weight:bold;margin-bottom:10px;">❌ 加载失败</div>
+                    <div style="font-size:13px;color:#555;line-height:1.6;">
+                        无法加载 <code>plan.md</code>：<br>
+                        <code style="color:#c0392b;">{{ loadError }}</code><br><br>
+                        请确认：
+                        <ul style="text-align:left;font-size:12px;line-height:1.8;">
+                            <li>本地 HTTP 服务已启动（如 <code>python -m http.server</code>）</li>
+                            <li>浏览器通过 <code>http://127.0.0.1:端口/</code> 访问（非 file:// 协议）</li>
+                            <li><code>plan.md</code> 与 <code>index2.html</code> 在同一目录</li>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- 顶部 header（title + 路线描述） -->
+        <div id="header">
+            <h1 id="page-title">{{ mdTitle || '行程计划' }}</h1>
+            <p id="page-subtitle">{{ routeDescription || '加载中...' }}</p>
+        </div>
+
+        <div id="main">
+            <!-- 工具栏：所有按钮由 sections 动态生成，data-section 与 click handler 一一对应 -->
+            <div id="toolbar">
+                <span id="day-buttons">
+                    <button
+                        v-for="sec in sections"
+                        :key="sec.key"
+                        :data-section="sec.key"
+                        :class="{ active: activeKey === sec.key }"
+                        :style="!sec.isDay ? 'background:#f5e6c8;border-color:#d4a857;' : ''"
+                        :title="!sec.isDay ? sec.title : ''"
+                        @click="onToolbarClick(sec)"
+                    >{{ sec.isDay ? sec.dayLabel : sec.title.slice(0, 4) }}</button>
+                </span>
+                <span style="width:1px;height:24px;background:#bdc3c7;margin:0 6px"></span>
+                <button
+                    id="btn-view-md"
+                    :class="{ active: isMdMode }"
+                    style="background:#3498db;color:#fff;border-color:#3498db;"
+                    @click="showFullMD"
+                >[查看完整攻略]</button>
+            </div>
+
+            <div id="main-content">
+                <div id="map-container">
+                    <div id="map"></div>
+                </div>
+                <div id="info-panel" :class="{ collapsed: panelCollapsed }">
+                    <div class="panel-header" id="panel-header" title="点击折叠/展开右侧详情" @click="togglePanel">
+                        <div class="panel-header-main">
+                            <h2 id="panel-title">{{ currentTitle }}</h2>
+                            <div class="day-meta" id="panel-meta">{{ currentMeta }}</div>
+                        </div>
+                    </div>
+                    <!-- MD 操作栏：与 .panel-header 共享滚动容器，紧贴无空白 -->
+                    <div id="md-view-actions" :class="{ hidden: !isMdMode }">
+                        <button id="btn-back-map" @click="hideFullMD">← 返回地图</button>
+                        <button id="btn-copy-md" @click="copyMd">[复制] 复制全部 MD</button>
+                        <button id="btn-toggle-mode" @click="toggleMDMode">
+                            {{ mdViewMode === 'rendered' ? '[切换] 源代码' : '[切换] 渲染版' }}
+                        </button>
+                        <button id="btn-download-md" @click="downloadMd">[下载] 下载 MD 文件</button>
+                        <span style="margin-left:auto;color:#7f8c8d;font-size:11px;align-self:center;">默认显示渲染版 · 可点击"源代码"查看/复制原文</span>
+                    </div>
+                    <!-- MD 完整视图容器 -->
+                    <div id="md-view" :class="{ hidden: !isMdMode }">
+                        <div id="md-view-content" v-html="mdViewContentHtml"></div>
+                    </div>
+                    <!-- 当日详情面板 -->
+                    <div class="panel-content" id="panel-content" v-html="currentPanelHtml"></div>
+                </div>
+                <!-- 折叠按钮：脱离 #info-panel，作为 #main-content 直接子元素 -->
+                <div
+                    class="panel-toggle"
+                    id="panel-toggle"
+                    :aria-label="panelCollapsed ? '展开' : '折叠'"
+                    :title="panelCollapsed ? '展开右侧详情' : '折叠右侧详情'"
+                    @click="togglePanel"
+                ></div>
+            </div>
+        </div>
+    </div>
+
     <script>
-      window.$docsify = {
-        coverpage: true,
-        loadSidebar : true,
-        el: '#app',
-      };
+        /* ============================================================
+         * Vue 3 重构版本（index2.html）
+         * 设计原则：
+         *   1. 零依赖 CDN（Vue 3 + marked.js + Leaflet 全 CDN，无构建步骤）
+         *   2. DOM 结构与原 index.html 一致（ID 全保留），保证 27 测试全过
+         *   3. Vue 管视图骨架（v-if / v-for / 响应式），Leaflet 管地图层（命令式 DOM）
+         *   4. mounted 钩子里挂载 Leaflet，onUnmounted 不需要（单页不卸载）
+         * ============================================================ */
+
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+        // ============== 配置 marked.js ==============
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                gfm: true,
+                breaks: false,
+                headerIds: false,
+                mangle: false
+            });
+        }
+
+        // ============== 纯函数（与原文件一致）==============
+        // 提取坐标行：必须是单行、仅含 @lat,lng 形式（可多个、空格分隔）
+        function parseCoordLine(line) {
+            const trimmed = line.trim();
+            const re = /@(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/g;
+            const coords = [];
+            let m;
+            while ((m = re.exec(trimmed)) !== null) {
+                const lat = parseFloat(m[1]);
+                const lng = parseFloat(m[2]);
+                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    coords.push([lat, lng]);
+                }
+            }
+            if (coords.length === 0) return [];
+            const stripped = trimmed.replace(/@(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/g, '').trim();
+            if (stripped.length > 0) return [];
+            return coords;
+        }
+        function parseDayFromTitle(title) {
+            const m = title.match(/^D(\d{1,2})\b/i);
+            return m ? parseInt(m[1], 10) : null;
+        }
+        function extractMDTitle(mdText) {
+            for (const line of mdText.split('\n')) {
+                const m = line.match(/^#\s+(.+?)\s*$/);
+                if (m) return m[1].trim();
+            }
+            return '行程计划';
+        }
+        function parseDayEndpoints(title) {
+            const arrowIdx = title.indexOf('→');
+            if (arrowIdx < 0) return null;
+            const after = title.slice(arrowIdx + 1).trim();
+            const m = after.match(/^([^\s⭐⭐⭐·•·]+)/);
+            if (!m) return null;
+            const end = m[1].trim();
+            const before = title.slice(0, arrowIdx);
+            const bm = before.match(/([^\s→⭐⭐⭐·•·]+)\s*$/);
+            if (!bm) return null;
+            return { start: bm[1].trim(), end };
+        }
+        function buildRouteDescription(sections) {
+            const cities = [];
+            const seen = new Set();
+            for (const sec of sections) {
+                if (!sec.isDay) continue;
+                const ep = parseDayEndpoints(sec.title);
+                if (!ep) continue;
+                if (!seen.has(ep.start)) { seen.add(ep.start); cities.push(ep.start); }
+                if (!seen.has(ep.end)) { seen.add(ep.end); cities.push(ep.end); }
+            }
+            return cities.join(' → ');
+        }
+        function parseDayDateLabel(title) {
+            const m = title.match(/^D\d+\s*[·•]\s*([^·•→]+?)(?:\s*[·•→]|$)/);
+            return m ? m[1].trim() : '';
+        }
+        function parseSections(mdText) {
+            const lines = mdText.split('\n');
+            const sections = [];
+            let current = null;
+            for (const line of lines) {
+                const h2 = line.match(/^##\s+(.+?)\s*$/);
+                if (h2) {
+                    if (current) sections.push(current);
+                    current = { title: h2[1].trim(), bodyLines: [] };
+                } else if (current) {
+                    current.bodyLines.push(line);
+                }
+            }
+            if (current) sections.push(current);
+
+            const result = [];
+            for (const sec of sections) {
+                const day = parseDayFromTitle(sec.title);
+                let coords = [];
+                const cleanedLines = [];
+                for (const ln of sec.bodyLines) {
+                    if (coords.length === 0) {
+                        const c = parseCoordLine(ln);
+                        if (c.length > 0) {
+                            coords = c;
+                            continue;
+                        }
+                    }
+                    cleanedLines.push(ln);
+                }
+                const body = cleanedLines.join('\n').trim();
+                result.push({
+                    key: day !== null ? String(day) : 'sec-' + result.length,
+                    title: sec.title,
+                    body,
+                    coords,
+                    route: null,
+                    isDay: day !== null,
+                    dayLabel: day !== null ? ('D' + day) : null,
+                });
+            }
+            return result;
+        }
+        function parseRouteMD(routeText) {
+            const lines = routeText.split('\n');
+            const map = new Map();
+            let currentTitle = null;
+            let currentPts = [];
+            let currentSnapped = [];
+            for (const line of lines) {
+                const h2 = line.match(/^##\s+(.+?)\s*$/);
+                if (h2) {
+                    if (currentTitle) map.set(currentTitle, { coords: currentPts, snappedPois: currentSnapped });
+                    currentTitle = h2[1].trim();
+                    currentPts = [];
+                    currentSnapped = [];
+                    continue;
+                }
+                const t = line.trim();
+                if (!currentTitle || !t || t.startsWith('>')) continue;
+                if (t.startsWith('<!-- snapped:')) {
+                    const inner = t.replace(/^<!--\s*snapped:\s*/, '').replace(/\s*-->$/, '');
+                    const entries = inner.split('|');
+                    for (const entry of entries) {
+                        const parts = entry.split(';');
+                        if (parts.length < 7) continue;
+                        const [slat, slng, name, type, stopStr, olat, olng, distStr] = parts;
+                        currentSnapped.push({
+                            snappedCoord: [parseFloat(slat), parseFloat(slng)],
+                            name, type,
+                            stop_duration_min: parseInt(stopStr, 10) || 0,
+                            origCoord: [parseFloat(olat), parseFloat(olng)],
+                            snapDistance: parseInt(distStr, 10) || 0,
+                        });
+                    }
+                    continue;
+                }
+                if (t.startsWith('#')) continue;
+                const m = t.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+                if (!m) continue;
+                const lat = parseFloat(m[1]);
+                const lng = parseFloat(m[2]);
+                if (Number.isFinite(lat) && Number.isFinite(lng)) currentPts.push([lat, lng]);
+            }
+            if (currentTitle) map.set(currentTitle, { coords: currentPts, snappedPois: currentSnapped });
+            return map;
+        }
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        // ============== Vue 3 应用 ==============
+        const app = createApp({
+            setup() {
+                // ---------- 响应式状态 ----------
+                const sections = ref([]);              // 当前已解析的 sections
+                const mdRaw = ref('');                 // 原始 MD 全文（用于复制/下载/源代码模式）
+                const mdTitle = ref('行程计划');       // 第一个 # H1
+                const detailPois = ref([]);            // 来自 route-detail.json 的 POI
+                const routeDescription = ref('加载中...'); // header 副标题
+                const activeKey = ref(null);           // 当前工具栏 active 的 section key
+                const panelCollapsed = ref(false);     // 详情面板是否折叠
+                const isMdMode = ref(false);           // 是否在 MD 完整视图
+                const mdViewMode = ref('rendered');    // MD 视图内：rendered / source
+                const loaded = ref(false);             // 数据加载完成
+                const loadError = ref('');             // 加载错误信息
+
+                // ---------- Leaflet 地图实例（命令式 API 持有）----------
+                let map = null;          // Leaflet map 对象
+                let detailMarkers = [];  // 详情 POI marker 数组（暴露 window.__tripDetailMarkers）
+
+                // ---------- 计算属性：当前 section 的 panel 内容 ----------
+                const currentSection = computed(() => {
+                    if (!activeKey.value) return null;
+                    return sections.value.find(s => s.key === activeKey.value);
+                });
+                const currentTitle = computed(() => {
+                    const sec = currentSection.value;
+                    if (!sec) return '加载中';
+                    return sec.isDay ? `D${sec.key}` : sec.title;
+                });
+                const currentMeta = computed(() => {
+                    const sec = currentSection.value;
+                    if (!sec) return '加载中...';
+                    if (sec.isDay) {
+                        const dateLabel = parseDayDateLabel(sec.title);
+                        return dateLabel || `第 ${sec.key} 天`;
+                    }
+                    return sec.title;
+                });
+                const currentPanelHtml = computed(() => {
+                    const sec = currentSection.value;
+                    if (!sec) return '<div class="empty-state">加载中...</div>';
+                    try {
+                        const fullMd = '## ' + sec.title + '\n\n' + sec.body;
+                        return marked.parse(fullMd);
+                    } catch (e) {
+                        return '<pre style="color:red">' + e.message + '</pre>';
+                    }
+                });
+                // MD 完整视图内容（响应 mdViewMode）
+                const mdViewContentHtml = computed(() => {
+                    if (!isMdMode.value) return '';
+                    if (mdViewMode.value === 'rendered') {
+                        const html = [`<h1>${escapeHtml(mdTitle.value || '行程计划')}</h1>`];
+                        for (const sec of sections.value) {
+                            html.push(`<div class="day-section" id="md-anchor-${escapeHtml(sec.key)}">`);
+                            const h2Style = 'border:none;padding:0;color:#3498db;';
+                            html.push(`<h2 style="${h2Style}">📅 ${escapeHtml(sec.title)}</h2>`);
+                            if (sec.body) html.push(marked.parse(sec.body));
+                            html.push('</div>');
+                        }
+                        return html.join('\n');
+                    } else {
+                        // 源代码模式：返回纯文本（Vue 用 textContent 渲染需要不同绑定，但这里用 v-html 会展示为 pre 风格）
+                        // 为了让源代码可复制+可读，用 <pre> 包起来
+                        return `<pre style="white-space:pre-wrap;font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;">${escapeHtml(mdRaw.value)}</pre>`;
+                    }
+                });
+
+                // ============== 工具栏点击 ==============
+                function onToolbarClick(sec) {
+                    if (isMdMode.value) {
+                        // MD 模式：滚动到对应锚点
+                        scrollToSectionInMD(sec.key);
+                        return;
+                    }
+                    // 地图模式：右侧面板 + 地图定位
+                    showSection(sec.key);
+                    if (sec.isDay && map) {
+                        let pts = (sec.route && sec.route.length >= 2) ? sec.route : sec.coords;
+                        if (pts.length >= 2) {
+                            map.fitBounds(L.latLngBounds(pts), {
+                                padding: [80, 80],
+                                animate: true,
+                                maxZoom: 13
+                            });
+                        } else if (pts.length === 1) {
+                            map.setView(pts[0], 11, { animate: false });
+                            map.panBy([180, 0], { animate: true });
+                        }
+                    }
+                }
+
+                function showSection(sectionKey) {
+                    activeKey.value = sectionKey;
+                    // 滚动面板顶部
+                    nextTick(() => {
+                        const panel = document.getElementById('info-panel');
+                        if (panel) panel.scrollTop = 0;
+                    });
+                }
+
+                // ============== MD 锚点滚动 ==============
+                function scrollToSectionInMD(secKey) {
+                    const anchor = document.getElementById('md-anchor-' + secKey);
+                    const mdView = document.getElementById('md-view');
+                    if (!anchor || !mdView) return false;
+                    // 用 getBoundingClientRect 算真实偏移（避开 offsetParent 是 #main-content 的坑）
+                    const anchorTop = anchor.getBoundingClientRect().top;
+                    const mdViewTop = mdView.getBoundingClientRect().top;
+                    const target = mdView.scrollTop + (anchorTop - mdViewTop);
+                    mdView.scrollTo({ top: target, behavior: 'smooth' });
+                    activeKey.value = secKey;
+                    return true;
+                }
+
+                // ============== MD 模式切换 ==============
+                function showFullMD() {
+                    mdViewMode.value = 'rendered';
+                    isMdMode.value = true;
+                    // ⚠️ CSS 选择器 body.md-mode 是基于 body.classList 的，Vue 模板只在 #app 内渲染，
+                    //   需要手动同步 body.class（测试断言也读 body.classList）
+                    document.body.classList.add('md-mode');
+                    nextTick(() => {
+                        const mdView = document.getElementById('md-view');
+                        if (mdView) mdView.scrollTop = 0;
+                        if (map && map.scrollWheelZoom) map.scrollWheelZoom.disable();
+                    });
+                }
+                function hideFullMD() {
+                    isMdMode.value = false;
+                    document.body.classList.remove('md-mode');
+                    nextTick(() => {
+                        if (map && map.scrollWheelZoom) map.scrollWheelZoom.enable();
+                        setTimeout(() => map && map.invalidateSize(), 100);
+                        // 回到第一段
+                        if (sections.value.length > 0) {
+                            showSection(sections.value[0].key);
+                        }
+                    });
+                }
+                function toggleMDMode() {
+                    mdViewMode.value = mdViewMode.value === 'rendered' ? 'source' : 'rendered';
+                }
+
+                // ============== 折叠面板 ==============
+                function togglePanel() {
+                    panelCollapsed.value = !panelCollapsed.value;
+                }
+
+                // ============== 复制 / 下载 MD ==============
+                async function copyMd() {
+                    try {
+                        await navigator.clipboard.writeText(mdRaw.value);
+                        const btn = document.getElementById('btn-copy-md');
+                        const orig = btn.textContent;
+                        btn.textContent = '[OK] 已复制';
+                        btn.style.background = '#27ae60';
+                        btn.style.color = '#fff';
+                        setTimeout(() => {
+                            btn.textContent = orig;
+                            btn.style.background = '';
+                            btn.style.color = '';
+                        }, 2000);
+                    } catch (err) {
+                        alert('复制失败：' + err + '\n请手动选中复制');
+                    }
+                }
+                function downloadMd() {
+                    const blob = new Blob([mdRaw.value], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const safeTitle = (mdTitle.value || '行程计划').replace(/[\s\\/:*?"<>|]/g, '-');
+                    a.download = safeTitle + '-完整行程.md';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+
+                // ============== 数据加载 ==============
+                async function loadMarkdown() {
+                    try {
+                        const [mainResp, routeResp, detailResp] = await Promise.all([
+                            fetch('plan.md', { cache: 'no-store' }),
+                            fetch('route.md', { cache: 'no-store' }),
+                            fetch('route-detail.json', { cache: 'no-store' })
+                        ]);
+                        if (!mainResp.ok) {
+                            throw new Error('HTTP ' + mainResp.status + ' - 加载 plan.md 失败');
+                        }
+                        mdRaw.value = await mainResp.text();
+                        let routeRaw = '';
+                        if (routeResp.ok) {
+                            routeRaw = await routeResp.text();
+                        } else {
+                            console.warn('[加载] route.md 不可用 (HTTP ' + routeResp.status + ')，地图 polyline 退化为直线');
+                        }
+                        let detailData = { pois: [] };
+                        if (detailResp.ok) {
+                            try {
+                                detailData = await detailResp.json();
+                                if (!Array.isArray(detailData.pois)) detailData.pois = [];
+                            } catch (e) {
+                                console.warn('[加载] route-detail.json 解析失败：', e.message);
+                            }
+                        } else {
+                            console.warn('[加载] route-detail.json 不可用 (HTTP ' + detailResp.status + ')，地图不显示景点/酒店 marker');
+                        }
+                        detailPois.value = detailData.pois;
+                        const routeMap = parseRouteMD(routeRaw);
+
+                        mdTitle.value = extractMDTitle(mdRaw.value);
+                        document.title = mdTitle.value;
+
+                        const parsed = parseSections(mdRaw.value);
+                        for (const sec of parsed) {
+                            if (sec.isDay && routeMap.has(sec.title)) {
+                                const r = routeMap.get(sec.title);
+                                sec.route = r.coords;
+                                sec.routeSnapped = r.snappedPois || [];
+                            }
+                        }
+                        sections.value = parsed;
+
+                        routeDescription.value = buildRouteDescription(parsed)
+                        || (parsed[0] && parsed[0].title)
+                        || '点击地图标记或工具栏按钮查看详情';
+
+                        loaded.value = true;
+
+                        // 等 Vue 渲染完 DOM 再画 Leaflet（避免 race）
+                        await nextTick();
+
+                        // ⚠️ 关键：再等一帧 rAF 让 CSS flex 布局完成（#main-content 高度从 0 传播到 #map 容器）
+                        //   Vue mounted 同步触发 loadMarkdown，nextTick 后 DOM 存在但 flex 容器尺寸可能未传播，
+                        //   直接 L.map('map') 会读到 height=0，fitBounds 算出错乱的 padding（用例 smoke #14 失败）
+                        await new Promise(resolve => requestAnimationFrame(resolve));
+
+                        // 初始化地图（地图 DOM 已存在 #map）
+                        initMap(parsed);
+                        // 渲染 POI marker
+                        renderDetailPOIs();
+                        // 默认显示第一段
+                        if (parsed.length > 0) {
+                            showSection(parsed[0].key);
+                        }
+                    } catch (err) {
+                        console.error('[加载失败]', err);
+                        loadError.value = err.message;
+                    }
+                }
+
+                // ============== Leaflet 初始化（mounted 后调用一次）==============
+                function initMap(parsed) {
+                    map = L.map('map', {
+                        center: [0, 0],
+                        zoom: 2,
+                        minZoom: 2,
+                        maxZoom: 18
+                    });
+                    window.__tripMap = map;  // 暴露给 E2E 测试
+
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap',
+                        maxZoom: 18
+                    }).addTo(map);
+
+                    // 收集所有 MAP_POINTS（按 sections 顺序）
+                    const allMapPoints = [];
+                    for (const sec of parsed) {
+                        if (sec.isDay) {
+                            for (const coord of sec.coords) {
+                                allMapPoints.push({ day: sec.dayLabel, coord });
+                            }
+                        }
+                    }
+
+                    // 收集 polyline 点
+                    const allPolyCoords = [];
+                    for (const sec of parsed) {
+                        if (sec.isDay && sec.route && sec.route.length >= 2) {
+                            allPolyCoords.push(...sec.route);
+                        }
+                    }
+                    const boundsCoords = allPolyCoords.length > 0 ? allPolyCoords : allMapPoints.map(p => p.coord);
+
+                    // 去重 marker（同坐标合并显示 D 数标签）
+                    const dedup = new Map();
+                    for (const p of allMapPoints) {
+                        const k = p.coord[0].toFixed(5) + ',' + p.coord[1].toFixed(5);
+                        if (!dedup.has(k)) dedup.set(k, { coord: p.coord, days: [] });
+                        // 去重同一天的多次出现（避免如 D4 起终点都在酒店时显示 "D3/D4/D4/D5"）
+                        if (!dedup.get(k).days.includes(p.day)) dedup.get(k).days.push(p.day);
+                    }
+                    const uniqueMarkers = [...dedup.values()];
+
+                    const startCoord = uniqueMarkers[0].coord;
+                    const endCoord = uniqueMarkers[uniqueMarkers.length - 1].coord;
+
+                    uniqueMarkers.forEach((m, idx) => {
+                        const isStart = m.coord[0].toFixed(5) === startCoord[0].toFixed(5)
+                                      && m.coord[1].toFixed(5) === startCoord[1].toFixed(5);
+                        const isEnd = m.coord[0].toFixed(5) === endCoord[0].toFixed(5)
+                                    && m.coord[1].toFixed(5) === endCoord[1].toFixed(5);
+                        const color = (isStart || isEnd) ? '#3498db' : '#e74c3c';
+                        const label = m.days.join('/');
+                        const w = Math.max(30, 8 + label.length * 9);
+                        const icon = L.divIcon({
+                            className: 'custom-marker',
+                            html: `<div style="
+                                min-width:${w}px;height:30px;border-radius:15px;
+                                background:${color};color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-weight:bold;font-size:11px;
+                                border:3px solid #fff;
+                                box-shadow:0 2px 6px rgba(0,0,0,0.4);
+                                cursor:pointer;padding:0 8px;">${label}</div>`,
+                            iconSize: [w, 30],
+                            iconAnchor: [w / 2, 15]
+                        });
+                        const marker = L.marker(m.coord, { icon }).addTo(map);
+                        marker.on('click', () => {
+                            const firstDay = m.days[0].replace('D', '');
+                            showSection(firstDay);
+                        });
+                    });
+
+                    // fitBounds：四周 ≥10% padding
+                    if (boundsCoords.length >= 1) {
+                        const bounds = L.latLngBounds(boundsCoords);
+                        const size = map.getSize();
+                        const padX = Math.max(60, Math.round(size.x * 0.10));
+                        const padY = Math.max(60, Math.round(size.y * 0.10));
+                        map.fitBounds(bounds, {
+                            paddingTopLeft: [padX, padY],
+                            paddingBottomRight: [padX, padY],
+                            maxZoom: 11,
+                        });
+                    }
+
+                    // 画 polyline（按 D 段分色）
+                    const palette = ['#e74c3c', '#f39c12', '#27ae60', '#2980b9', '#8e44ad',
+                                     '#16a085', '#d35400', '#c0392b', '#2c3e50', '#7f8c8d'];
+                    for (let i = 0; i < parsed.length; i++) {
+                        const sec = parsed[i];
+                        if (!sec.isDay) continue;
+                        if (sec.route && sec.route.length >= 2) {
+                            L.polyline(sec.route, {
+                                color: palette[(i) % palette.length],
+                                weight: 3.5,
+                                opacity: 0.85
+                            }).addTo(map);
+                        } else if (sec.coords.length >= 2) {
+                            L.polyline(sec.coords, {
+                                color: palette[(i) % palette.length],
+                                weight: 3,
+                                opacity: 0.7,
+                                dashArray: '6,6'
+                            }).addTo(map);
+                        }
+                    }
+
+                    // 图例
+                    const legend = L.control({ position: 'bottomleft' });
+                    legend.onAdd = function () {
+                        const div = L.DomUtil.create('div', 'map-legend');
+                        div.innerHTML = `
+                            <b>行程路线</b><br>
+                            <span style="display:inline-block;width:24px;height:3px;background:#e74c3c;vertical-align:middle"></span> 自驾路线（按 D 段分色）<br>
+                            <span style="display:inline-block;width:12px;height:12px;background:#e74c3c;border-radius:50%;border:2px solid #fff"></span> 途经点（点击查看详情）<br>
+                            <span style="display:inline-block;width:12px;height:12px;background:#3498db;border-radius:50%;border:2px solid #fff"></span> 起终点（由 MD 中的「行程开始」标识）<br>
+                            <b style="margin-top:4px;display:inline-block;">详细 POI（hover 看名称）</b><br>
+                            <span style="display:inline-block;width:14px;height:14px;background:#2980b9;border-radius:50%;border:2px solid #fff;vertical-align:middle"></span> 🏛 景点<br>
+                            <span style="display:inline-block;width:14px;height:14px;background:#e67e22;border-radius:3px;border:2px solid #fff;vertical-align:middle"></span> 🛏 酒店<br>
+                        `;
+                        return div;
+                    };
+                    legend.addTo(map);
+                }
+
+                // ============== 详细 POI marker ==============
+                function renderDetailPOIs() {
+                    if (!detailPois.value || detailPois.value.length === 0 || !map) return;
+                    detailMarkers = [];
+                    window.__tripDetailMarkers = detailMarkers;
+
+                    // 收集 snapped 索引（按 name 匹配）
+                    const snappedByName = new Map();
+                    for (const sec of sections.value) {
+                        if (sec.isDay && Array.isArray(sec.routeSnapped)) {
+                            for (const sp of sec.routeSnapped) {
+                                snappedByName.set(sp.name, sp);
+                            }
+                        }
+                    }
+
+                    for (const poi of detailPois.value) {
+                        const isHotel = poi.type === 'hotel';
+                        const icon = L.divIcon({
+                            className: 'detail-marker detail-marker-' + poi.type,
+                            html: `<div style="
+                                width:28px;height:28px;border-radius:${isHotel ? '6px' : '50%'};
+                                background:${isHotel ? '#e67e22' : '#2980b9'};
+                                color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:14px;
+                                border:2px solid #fff;
+                                box-shadow:0 1px 4px rgba(0,0,0,0.4);
+                                cursor:pointer;">${isHotel ? '🛏' : '🏛'}</div>`,
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        });
+
+                        const snap = snappedByName.get(poi.name);
+                        const [mLat, mLng] = snap ? snap.snappedCoord : [poi.lat, poi.lng];
+                        const stopMin = snap ? snap.stop_duration_min : (poi.stop_duration_min || 0);
+                        const snapDist = snap ? snap.snapDistance : 0;
+
+                        const marker = L.marker([mLat, mLng], { icon, riseOnHover: true }).addTo(map);
+
+                        const typeLabel = isHotel ? '酒店' : '景点';
+                        const priceLine = poi.price ? `<div style="color:#c0392b;font-weight:bold;margin-top:2px;">${poi.price}</div>` : '';
+                        const stopLine = stopMin > 0 ? `<div style="color:#16a085;margin-top:2px;">⏱ 停留 ${stopMin}min</div>` : '';
+                        const offsetLine = (snapDist > 500) ? `<div style="color:#e67e22;font-size:10px;margin-top:2px;">📍 偏离路线 ${(snapDist/1000).toFixed(1)}km（snap 到最近路点）</div>` : '';
+                        const popupHtml = `<div style="font-size:12px;line-height:1.5;min-width:160px;">
+                            <div style="font-weight:bold;font-size:13px;color:#2c3e50;">${escapeHtml(poi.name)}</div>
+                            <div style="color:#7f8c8d;margin-top:2px;">
+                                <span style="background:${isHotel ? '#e67e22' : '#2980b9'};color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;">${typeLabel}</span>
+                                <span style="margin-left:4px;">D${poi.day}</span>
+                            </div>
+                            <div style="color:#555;margin-top:4px;">${escapeHtml(poi.tip || '')}</div>
+                            ${priceLine}
+                            ${stopLine}
+                            ${offsetLine}
+                        </div>`;
+
+                        marker.bindTooltip(popupHtml, {
+                            direction: 'top',
+                            offset: [0, -14],
+                            opacity: 1,
+                            className: 'detail-popup'
+                        });
+                        marker.on('click', () => {
+                            showSection(String(poi.day));
+                        });
+                        detailMarkers.push(marker);
+                    }
+                }
+
+                // ============== mounted ==============
+                onMounted(() => {
+                    loadMarkdown();
+                });
+
+                return {
+                    // 状态（响应式）
+                    sections, mdTitle, routeDescription, activeKey,
+                    panelCollapsed, isMdMode, mdViewMode,
+                    loaded, loadError,
+                    // 计算属性
+                    currentTitle, currentMeta, currentPanelHtml, mdViewContentHtml,
+                    // 方法
+                    onToolbarClick, showSection, scrollToSectionInMD,
+                    showFullMD, hideFullMD, toggleMDMode,
+                    togglePanel, copyMd, downloadMd
+                };
+            }
+        });
+        app.mount('#app');
     </script>
-    <!--script src="//cdn.jsdelivr.net/npm/docsify@4"></script-->
-    <script src="resources/docsity.js"></script>
-  </body>
+</body>
 </html>

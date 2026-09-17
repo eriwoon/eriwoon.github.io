@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "description": "每日详细 POI（景点 + 酒店）坐标 + hover popup 信息 + 停留时间",
+    "version": "2026-09-15 (12天版：取消南昌改武汉，取消资兴改韶关丹霞山+南华寺)",
+    "precision_note": "坐标为 AI 估算（凭景点/酒店名称 + 粗位置记忆），精度 ~1-3km，仅供地图预览用，不可用于导航",
+    "来源": "对照 plan.md 各 D 段『主要景点描述』+ 酒店价格查询.univer.md",
+    "fields": {
+      "day": "1-12",
+      "type": "spot=景点 / hotel=酒店",
+      "name": "POI 名称（与 plan.md 一致）",
+      "lat": "AI 估算纬度",
+      "lng": "AI 估算经度",
+      "tip": "popup 简短提示（游玩亮点/价位/提醒）",
+      "price": "（仅 hotel）实查单价 + 查价日期",
+      "stop_duration_min": "停留/参观时长（分钟），用于 build.js 计算总时间；hotel 默认 0"
+    }
+  },
+  "pois": [
+    { "day": 1, "type": "hotel", "name": "全季酒店（梅州万达广场店）", "lat": 24.2985, "lng": 116.1245, "price": "¥242/晚", "tip": "华住·距江北老街 2km", "stop_duration_min": 0 },
+    { "day": 1, "type": "spot",  "name": "中国客家博物馆", "lat": 24.2953, "lng": 116.1300, "tip": "全球唯一客家主题博物馆·免费", "stop_duration_min": 75 },
+    { "day": 1, "type": "spot",  "name": "松口古镇", "lat": 24.4830, "lng": 116.4090, "tip": "元末明初港口·骑楼老街·火船码头", "stop_duration_min": 75 },
+    { "day": 1, "type": "spot",  "name": "桥溪古韵", "lat": 24.4450, "lng": 116.3490, "tip": "继善楼·明清古村落·门票 30 元", "stop_duration_min": 45 },
+    { "day": 1, "type": "spot",  "name": "梅州客家围屋（围龙屋）", "lat": 24.3100, "lng": 116.1300, "tip": "全球客家文化中心·世界遗产·30-50 元/人", "stop_duration_min": 180 },
+
+    { "day": 2, "type": "hotel", "name": "全季酒店（南平延平区店）", "lat": 26.6420, "lng": 118.1730, "price": "¥225/晚", "tip": "华住·市中心·距江滨路夜市 1km", "stop_duration_min": 0 },
+    { "day": 2, "type": "spot",  "name": "古田会议会址", "lat": 25.2230, "lng": 116.9650, "tip": "廖氏宗祠·红色教育·免费需预约", "stop_duration_min": 75 },
+    { "day": 2, "type": "spot",  "name": "永定土楼（振成楼）", "lat": 24.6770, "lng": 116.7250, "tip": "土楼王子·世界遗产·门票 90 元", "stop_duration_min": 90 },
+
+    { "day": 3, "type": "hotel", "name": "全季酒店（黄山屯溪老街店）", "lat": 29.7168, "lng": 118.3358, "price": "¥352/晚", "tip": "华住·老街二马路·距老街 500m", "stop_duration_min": 0 },
+    { "day": 3, "type": "spot",  "name": "武夷山九曲溪", "lat": 27.6500, "lng": 117.6800, "tip": "竹筏 130 元/人·必选 13:00+ 筏次", "stop_duration_min": 150 },
+    { "day": 3, "type": "spot",  "name": "天游峰", "lat": 27.6450, "lng": 117.6750, "tip": "武夷第一胜地·登顶看云海", "stop_duration_min": 0 },
+    { "day": 3, "type": "spot",  "name": "大红袍景区", "lat": 27.6700, "lng": 117.6920, "tip": "母树大红袍·茶中之王", "stop_duration_min": 0 },
+
+    { "day": 4, "type": "spot",  "name": "黄山风景区·云谷寺", "lat": 30.1310, "lng": 118.1680, "tip": "云谷索道入口·上山起点", "stop_duration_min": 0 },
+    { "day": 4, "type": "spot",  "name": "始信峰", "lat": 30.1380, "lng": 118.1720, "tip": "始信黄山天下奇", "stop_duration_min": 45 },
+    { "day": 4, "type": "spot",  "name": "光明顶", "lat": 30.1345, "lng": 118.1620, "tip": "1860m·黄山第二高峰·课文《黄山奇石》取景地", "stop_duration_min": 30 },
+    { "day": 4, "type": "spot",  "name": "迎客松", "lat": 30.1280, "lng": 118.1670, "tip": "玉屏楼前·国画松", "stop_duration_min": 30 },
+    { "day": 4, "type": "spot",  "name": "西海大峡谷", "lat": 30.1410, "lng": 118.1550, "tip": "梦幻景区·一环/二环徒步", "stop_duration_min": 90 },
+
+    { "day": 5, "type": "hotel", "name": "桔子水晶酒店（景德镇中国陶瓷博物馆店）", "lat": 29.2780, "lng": 117.2200, "price": "¥421/晚", "tip": "华住中高端·亲子房·距博物馆 1km", "stop_duration_min": 0 },
+    { "day": 5, "type": "spot",  "name": "徽州古城（歙县）", "lat": 29.8680, "lng": 118.4370, "tip": "许国石坊·徽州府衙·门票 80 元", "stop_duration_min": 75 },
+    { "day": 5, "type": "spot",  "name": "景德镇古窑民俗博览区", "lat": 29.2890, "lng": 117.2090, "tip": "明清古窑作坊群·门票 95 元", "stop_duration_min": 150 },
+    { "day": 5, "type": "spot",  "name": "陶瓷一条街", "lat": 29.2740, "lng": 117.2120, "tip": "青花/玲珑/粉彩·伴手礼采购", "stop_duration_min": 60 },
+
+    { "day": 6, "type": "spot",  "name": "中国陶瓷博物馆", "lat": 29.2780, "lng": 117.2250, "tip": "国家级博物馆·元青花·『贝』的故事·免费需预约", "stop_duration_min": 90 },
+    { "day": 6, "type": "spot",  "name": "陶溪川文创园", "lat": 29.2790, "lng": 117.2180, "tip": "原宇宙瓷厂改造·年轻匠人市集·**DIY 已舍弃**", "stop_duration_min": 60 },
+    { "day": 6, "type": "spot",  "name": "婺源篁岭", "lat": 29.3500, "lng": 117.8600, "tip": "晒秋+油菜花·门票+索道 145 元·D6 下午短停 1.5h", "stop_duration_min": 90 },
+    { "day": 6, "type": "spot",  "name": "鄱阳湖口", "lat": 29.7340, "lng": 116.1940, "tip": "中国第一大淡水湖·20 分钟短停", "stop_duration_min": 20 },
+
+    { "day": 7, "type": "hotel", "name": "全季酒店（庐山牯岭店）", "lat": 29.5680, "lng": 115.9810, "price": "¥1105/晚", "tip": "国庆溢价较高·可考虑庐山锦绣/云上替代", "stop_duration_min": 0 },
+    { "day": 7, "type": "spot",  "name": "如琴湖 / 花径公园", "lat": 29.5690, "lng": 115.9700, "tip": "白居易《大林寺桃花》·免费", "stop_duration_min": 45 },
+    { "day": 7, "type": "spot",  "name": "西林寺", "lat": 29.5780, "lng": 115.9750, "tip": "苏轼《题西林壁》原文墙·免费", "stop_duration_min": 30 },
+    { "day": 7, "type": "spot",  "name": "三叠泉", "lat": 29.5610, "lng": 115.9920, "tip": "李白『飞流直下三千尺』·下行缆车 80 元", "stop_duration_min": 150 },
+    { "day": 7, "type": "spot",  "name": "含鄱口", "lat": 29.5640, "lng": 115.9650, "tip": "庐山观日出最佳点·含鄱亭", "stop_duration_min": 30 },
+
+    { "day": 8, "type": "hotel", "name": "全季酒店（武汉黄鹤楼店）", "lat": 30.5440, "lng": 114.3050, "price": "¥380-480/晚", "tip": "华住·蛇山·步行 5min 至黄鹤楼", "stop_duration_min": 0 },
+    { "day": 8, "type": "spot",  "name": "武汉大学", "lat": 30.5410, "lng": 114.3660, "tip": "民国老建筑群·李四光选址·免费需预约", "stop_duration_min": 90 },
+    { "day": 8, "type": "spot",  "name": "黄鹤楼", "lat": 30.5440, "lng": 114.3050, "tip": "江南三大名楼·崔颢《黄鹤楼》·门票 70 元·登楼看长江大桥", "stop_duration_min": 120 },
+    { "day": 8, "type": "spot",  "name": "户部巷", "lat": 30.5480, "lng": 114.3050, "tip": "武汉过早第一街·热干面/三鲜豆皮·免费", "stop_duration_min": 30 },
+
+    { "day": 9, "type": "spot",  "name": "东湖·听涛景区", "lat": 30.5600, "lng": 114.3800, "tip": "中国最大城中湖·屈原纪念馆·免费", "stop_duration_min": 120 },
+    { "day": 9, "type": "hotel", "name": "岳阳格兰云天大酒店", "lat": 29.3660, "lng": 113.1300, "price": "¥380-480/晚", "tip": "4星·岳阳楼旁·距巴陵广场 200m", "stop_duration_min": 0 },
+    { "day": 9, "type": "spot",  "name": "岳阳楼", "lat": 29.3660, "lng": 113.1300, "tip": "江南三大名楼之首·范仲淹《岳阳楼记》·门票 70 元", "stop_duration_min": 150 },
+    { "day": 9, "type": "spot",  "name": "巴陵广场", "lat": 29.3670, "lng": 113.1280, "tip": "岳阳楼前广场·灯光秀·免费", "stop_duration_min": 30 },
+
+    { "day": 10, "type": "hotel", "name": "全季酒店（湘潭万楼店）", "lat": 27.8300, "lng": 112.9100, "price": "¥320-420/晚", "tip": "华住·万楼旁·距湘江 500m", "stop_duration_min": 0 },
+    { "day": 10, "type": "spot",  "name": "岳麓书院", "lat": 28.1820, "lng": 112.9560, "tip": "千年学府·朱张会讲·门票 40 元·毛泽东『实事求是』匾额", "stop_duration_min": 150 },
+    { "day": 10, "type": "spot",  "name": "爱晚亭", "lat": 28.1840, "lng": 112.9580, "tip": "杜牧『停车坐爱枫林晚』·免费", "stop_duration_min": 30 },
+    { "day": 10, "type": "spot",  "name": "橘子洲", "lat": 28.1980, "lng": 112.9370, "tip": "世界最长内陆洲·毛泽东青年雕塑·免费·观光车 20 元", "stop_duration_min": 180 },
+
+    { "day": 11, "type": "hotel", "name": "丹霞山国际青年酒店", "lat": 25.0640, "lng": 113.7450, "price": "¥350-450/晚", "tip": "4星·景区门口·距长老峰索道 800m", "stop_duration_min": 0 },
+    { "day": 11, "type": "spot",  "name": "丹霞山·长老峰", "lat": 25.0640, "lng": 113.7450, "tip": "世界自然遗产·丹霞地貌命名地·阳元石·门票 100 元", "stop_duration_min": 210 },
+
+    { "day": 12, "type": "spot",  "name": "南华寺", "lat": 24.8230, "lng": 113.6050, "tip": "禅宗六祖慧能道场·千年古刹·门票 20 元·六祖真身", "stop_duration_min": 90 }
+  ]
+}
